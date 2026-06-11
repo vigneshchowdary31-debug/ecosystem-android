@@ -1,0 +1,47 @@
+# Android Studio
+.idea/
+*.iml
+.idea_modules/
+
+# Gradle
+.gradle/
+build/
+**/build/
+.kotlin/
+
+# Local Environment
+local.properties
+
+# Secrets
+.env
+.env.*
+secret.properties
+secrets.properties
+
+# Signing Keys
+*.jks
+*.keystore
+*.pem
+*.p12
+*.key
+
+# Firebase
+google-services.json
+GoogleService-Info.plist
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Native Build
+.externalNativeBuild/
+.cxx/
+
+# Generated Sources
+**/generated/
+
+# Temporary Files
+*.swp
+*.swo

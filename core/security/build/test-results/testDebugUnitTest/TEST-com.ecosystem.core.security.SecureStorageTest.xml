@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.ecosystem.core.security.SecureStorageTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-06-11T21:16:41.449Z" hostname="vigneshs-MacBook-Air.local" time="0.202">
-  <properties/>
-  <testcase name="getString returns null when key not found" classname="com.ecosystem.core.security.SecureStorageTest" time="0.194"/>
-  <testcase name="putString encrypts and saves value" classname="com.ecosystem.core.security.SecureStorageTest" time="0.006"/>
-  <testcase name="getString retrieves and decrypts value" classname="com.ecosystem.core.security.SecureStorageTest" time="0.001"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

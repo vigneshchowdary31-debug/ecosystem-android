@@ -1,6 +1,0 @@
-[
-    {
-        "merged": "com.ecosystem.feature.settings-release-55:/drawable-v21/notification_action_background.xml",
-        "source": "com.ecosystem.feature.settings-core-1.12.0-3:/drawable-v21/notification_action_background.xml"
-    }
-]
