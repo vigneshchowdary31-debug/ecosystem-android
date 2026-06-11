@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 8.3.2">
+
+    <issue
+        id="ComposableNaming"
+        severity="Warning"
+        message="Composable functions with a return type should start with a lowercase letter"
+        category="Correctness"
+        priority="3"
+        summary="Incorrect naming for @Composable functions"
+        explanation="@Composable functions without a return type should use similar naming to classes, starting with an uppercase letter and ending with a noun. @Composable functions with a return type should be treated as normal Kotlin functions, starting with a lowercase letter."
+        errorLine1="private fun Modifier.SpacerHeight(height: Int): Modifier = this.height(height.dp)"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="/Users/vigneshchowdary/Projects/EcosystemProject/ecosystem-android/feature/pairing/src/main/java/com/ecosystem/feature/pairing/presentation/screen/PairingScreen.kt"
+            line="241"
+            column="22"/>
+    </issue>
+
+</issues>

@@ -1,0 +1,34 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.ecosystem.core.designsystem-mergeReleaseResources-37:/values-v16/values-v16.xml",
+            "map": [
+                {
+                    "source": "/Users/vigneshchowdary/.gradle/caches/8.14/transforms/07f0c1045fdc8369cad483e0c722c66f/transformed/core-1.12.0/res/values-v16/values-v16.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "65",
+                        "endOffsets": "116"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "com.ecosystem.core.designsystem-release-39:/values-v16/values-v16.xml",
+            "map": [
+                {
+                    "source": "/Users/vigneshchowdary/.gradle/caches/8.14/transforms/07f0c1045fdc8369cad483e0c722c66f/transformed/core-1.12.0/res/values-v16/values-v16.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "65",
+                        "endOffsets": "116"
+                    }
+                }
+            ]
+        }
+    ]
+}

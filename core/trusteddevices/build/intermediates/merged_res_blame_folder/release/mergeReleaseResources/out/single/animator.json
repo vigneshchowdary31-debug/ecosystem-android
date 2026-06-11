@@ -1,0 +1,26 @@
+[
+    {
+        "merged": "com.ecosystem.core.trusteddevices-release-22:/animator/fragment_close_exit.xml",
+        "source": "com.ecosystem.core.trusteddevices-fragment-1.5.1-12:/animator/fragment_close_exit.xml"
+    },
+    {
+        "merged": "com.ecosystem.core.trusteddevices-release-22:/animator/fragment_fade_enter.xml",
+        "source": "com.ecosystem.core.trusteddevices-fragment-1.5.1-12:/animator/fragment_fade_enter.xml"
+    },
+    {
+        "merged": "com.ecosystem.core.trusteddevices-release-22:/animator/fragment_close_enter.xml",
+        "source": "com.ecosystem.core.trusteddevices-fragment-1.5.1-12:/animator/fragment_close_enter.xml"
+    },
+    {
+        "merged": "com.ecosystem.core.trusteddevices-release-22:/animator/fragment_open_enter.xml",
+        "source": "com.ecosystem.core.trusteddevices-fragment-1.5.1-12:/animator/fragment_open_enter.xml"
+    },
+    {
+        "merged": "com.ecosystem.core.trusteddevices-release-22:/animator/fragment_open_exit.xml",
+        "source": "com.ecosystem.core.trusteddevices-fragment-1.5.1-12:/animator/fragment_open_exit.xml"
+    },
+    {
+        "merged": "com.ecosystem.core.trusteddevices-release-22:/animator/fragment_fade_exit.xml",
+        "source": "com.ecosystem.core.trusteddevices-fragment-1.5.1-12:/animator/fragment_fade_exit.xml"
+    }
+]

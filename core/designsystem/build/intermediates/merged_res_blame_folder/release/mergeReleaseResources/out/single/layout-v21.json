@@ -1,0 +1,18 @@
+[
+    {
+        "merged": "com.ecosystem.core.designsystem-release-39:/layout-v21/notification_action_tombstone.xml",
+        "source": "com.ecosystem.core.designsystem-core-1.12.0-2:/layout-v21/notification_action_tombstone.xml"
+    },
+    {
+        "merged": "com.ecosystem.core.designsystem-release-39:/layout-v21/notification_action.xml",
+        "source": "com.ecosystem.core.designsystem-core-1.12.0-2:/layout-v21/notification_action.xml"
+    },
+    {
+        "merged": "com.ecosystem.core.designsystem-release-39:/layout-v21/notification_template_icon_group.xml",
+        "source": "com.ecosystem.core.designsystem-core-1.12.0-2:/layout-v21/notification_template_icon_group.xml"
+    },
+    {
+        "merged": "com.ecosystem.core.designsystem-release-39:/layout-v21/notification_template_custom_big.xml",
+        "source": "com.ecosystem.core.designsystem-core-1.12.0-2:/layout-v21/notification_template_custom_big.xml"
+    }
+]

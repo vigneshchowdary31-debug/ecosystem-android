@@ -1,0 +1,15 @@
+/Users/vigneshchowdary/Projects/EcosystemProject/ecosystem-android/feature/pairing/src/main/java/com/ecosystem/feature/pairing/presentation/screen/PairingScreen.kt:241: Warning: Composable functions with a return type should start with a lowercase letter [ComposableNaming from androidx.compose.runtime]
+private fun Modifier.SpacerHeight(height: Int): Modifier = this.height(height.dp)
+                     ~~~~~~~~~~~~
+
+   Explanation for issues of type "ComposableNaming":
+   @Composable functions without a return type should use similar naming to
+   classes, starting with an uppercase letter and ending with a noun.
+   @Composable functions with a return type should be treated as normal Kotlin
+   functions, starting with a lowercase letter.
+
+   Vendor: Jetpack Compose
+   Identifier: androidx.compose.runtime
+   Feedback: https://issuetracker.google.com/issues/new?component=612128
+
+0 errors, 1 warnings

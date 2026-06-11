@@ -1,0 +1,11 @@
+com.ecosystem.core.common-core-1.12.0-0 /Users/vigneshchowdary/.gradle/caches/8.14/transforms/07f0c1045fdc8369cad483e0c722c66f/transformed/core-1.12.0/res
+com.ecosystem.core.common-jetified-annotation-experimental-1.3.0-1 /Users/vigneshchowdary/.gradle/caches/8.14/transforms/4478ef98fd6576ef89c7dc0cb7128ac3/transformed/jetified-annotation-experimental-1.3.0/res
+com.ecosystem.core.common-jetified-core-ktx-1.12.0-2 /Users/vigneshchowdary/.gradle/caches/8.14/transforms/7507e556f97572be24bab97426f87d82/transformed/jetified-core-ktx-1.12.0/res
+com.ecosystem.core.common-lifecycle-runtime-2.3.1-3 /Users/vigneshchowdary/.gradle/caches/8.14/transforms/c9d139d5fbbf28824b808be0b236657c/transformed/lifecycle-runtime-2.3.1/res
+com.ecosystem.core.common-pngs-4 /Users/vigneshchowdary/Projects/EcosystemProject/ecosystem-android/core/common/build/generated/res/pngs/release
+com.ecosystem.core.common-resValues-5 /Users/vigneshchowdary/Projects/EcosystemProject/ecosystem-android/core/common/build/generated/res/resValues/release
+com.ecosystem.core.common-mergeReleaseResources-6 /Users/vigneshchowdary/Projects/EcosystemProject/ecosystem-android/core/common/build/intermediates/incremental/release/mergeReleaseResources/merged.dir
+com.ecosystem.core.common-mergeReleaseResources-7 /Users/vigneshchowdary/Projects/EcosystemProject/ecosystem-android/core/common/build/intermediates/incremental/release/mergeReleaseResources/stripped.dir
+com.ecosystem.core.common-release-8 /Users/vigneshchowdary/Projects/EcosystemProject/ecosystem-android/core/common/build/intermediates/merged_res/release/mergeReleaseResources
+com.ecosystem.core.common-main-9 /Users/vigneshchowdary/Projects/EcosystemProject/ecosystem-android/core/common/src/main/res
+com.ecosystem.core.common-release-10 /Users/vigneshchowdary/Projects/EcosystemProject/ecosystem-android/core/common/src/release/res

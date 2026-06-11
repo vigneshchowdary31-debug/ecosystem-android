@@ -1,0 +1,62 @@
+[
+    {
+        "merged": "com.ecosystem.feature.pairing-release-71:/color/abc_secondary_text_material_light.xml",
+        "source": "com.ecosystem.feature.pairing-appcompat-1.1.0-11:/color/abc_secondary_text_material_light.xml"
+    },
+    {
+        "merged": "com.ecosystem.feature.pairing-release-71:/color/abc_secondary_text_material_dark.xml",
+        "source": "com.ecosystem.feature.pairing-appcompat-1.1.0-11:/color/abc_secondary_text_material_dark.xml"
+    },
+    {
+        "merged": "com.ecosystem.feature.pairing-release-71:/color/abc_search_url_text.xml",
+        "source": "com.ecosystem.feature.pairing-appcompat-1.1.0-11:/color/abc_search_url_text.xml"
+    },
+    {
+        "merged": "com.ecosystem.feature.pairing-release-71:/color/abc_primary_text_disable_only_material_dark.xml",
+        "source": "com.ecosystem.feature.pairing-appcompat-1.1.0-11:/color/abc_primary_text_disable_only_material_dark.xml"
+    },
+    {
+        "merged": "com.ecosystem.feature.pairing-release-71:/color/abc_primary_text_material_light.xml",
+        "source": "com.ecosystem.feature.pairing-appcompat-1.1.0-11:/color/abc_primary_text_material_light.xml"
+    },
+    {
+        "merged": "com.ecosystem.feature.pairing-release-71:/color/abc_hint_foreground_material_dark.xml",
+        "source": "com.ecosystem.feature.pairing-appcompat-1.1.0-11:/color/abc_hint_foreground_material_dark.xml"
+    },
+    {
+        "merged": "com.ecosystem.feature.pairing-release-71:/color/switch_thumb_material_dark.xml",
+        "source": "com.ecosystem.feature.pairing-appcompat-1.1.0-11:/color/switch_thumb_material_dark.xml"
+    },
+    {
+        "merged": "com.ecosystem.feature.pairing-release-71:/color/abc_primary_text_material_dark.xml",
+        "source": "com.ecosystem.feature.pairing-appcompat-1.1.0-11:/color/abc_primary_text_material_dark.xml"
+    },
+    {
+        "merged": "com.ecosystem.feature.pairing-release-71:/color/abc_background_cache_hint_selector_material_dark.xml",
+        "source": "com.ecosystem.feature.pairing-appcompat-1.1.0-11:/color/abc_background_cache_hint_selector_material_dark.xml"
+    },
+    {
+        "merged": "com.ecosystem.feature.pairing-release-71:/color/switch_thumb_material_light.xml",
+        "source": "com.ecosystem.feature.pairing-appcompat-1.1.0-11:/color/switch_thumb_material_light.xml"
+    },
+    {
+        "merged": "com.ecosystem.feature.pairing-release-71:/color/abc_hint_foreground_material_light.xml",
+        "source": "com.ecosystem.feature.pairing-appcompat-1.1.0-11:/color/abc_hint_foreground_material_light.xml"
+    },
+    {
+        "merged": "com.ecosystem.feature.pairing-release-71:/color/abc_background_cache_hint_selector_material_light.xml",
+        "source": "com.ecosystem.feature.pairing-appcompat-1.1.0-11:/color/abc_background_cache_hint_selector_material_light.xml"
+    },
+    {
+        "merged": "com.ecosystem.feature.pairing-release-71:/color/vector_tint_theme_color.xml",
+        "source": "com.ecosystem.feature.pairing-jetified-ui-release-28:/color/vector_tint_theme_color.xml"
+    },
+    {
+        "merged": "com.ecosystem.feature.pairing-release-71:/color/vector_tint_color.xml",
+        "source": "com.ecosystem.feature.pairing-jetified-ui-release-28:/color/vector_tint_color.xml"
+    },
+    {
+        "merged": "com.ecosystem.feature.pairing-release-71:/color/abc_primary_text_disable_only_material_light.xml",
+        "source": "com.ecosystem.feature.pairing-appcompat-1.1.0-11:/color/abc_primary_text_disable_only_material_light.xml"
+    }
+]

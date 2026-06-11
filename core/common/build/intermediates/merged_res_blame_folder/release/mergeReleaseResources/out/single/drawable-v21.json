@@ -1,0 +1,6 @@
+[
+    {
+        "merged": "com.ecosystem.core.common-release-7:/drawable-v21/notification_action_background.xml",
+        "source": "com.ecosystem.core.common-core-1.12.0-0:/drawable-v21/notification_action_background.xml"
+    }
+]

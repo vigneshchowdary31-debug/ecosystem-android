@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.3.2" type="incidents">
+
+    <incident
+        id="ComposableNaming"
+        severity="warning"
+        message="Composable functions with a return type should start with a lowercase letter">
+        <fix-replace
+            description="Change to spacerHeight"
+            robot="true"
+            independent="true"
+            oldString="SpacerHeight"
+            replacement="spacerHeight"/>
+        <location
+            file="${:feature:pairing*debug*MAIN*sourceProvider*0*javaDir*0}/com/ecosystem/feature/pairing/presentation/screen/PairingScreen.kt"
+            line="241"
+            column="22"
+            startOffset="10855"
+            endLine="241"
+            endColumn="34"
+            endOffset="10867"/>
+    </incident>
+
+</incidents>
