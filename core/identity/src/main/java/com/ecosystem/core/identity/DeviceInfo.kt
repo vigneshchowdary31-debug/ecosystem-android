@@ -7,5 +7,6 @@ data class DeviceInfo(
     val deviceId: String,
     val name: String,
     val publicKeyEd25519: String,
+    val advertisingIdentifier: String,
     val createdAt: Long = 0L
 )

@@ -17,6 +17,7 @@ class IdentityManagerImpl @Inject constructor(
     companion object {
         private const val IDENTITY_ALIAS = "primary_device_identity"
         private const val KEY_SECURE_DEVICE_ID = "identity_device_id"
+        private const val KEY_SECURE_ADVERTISING_ID = "identity_advertising_id"
     }
 
     override suspend fun getOrCreateIdentity(): DeviceInfo {
@@ -25,12 +26,14 @@ class IdentityManagerImpl @Inject constructor(
         // Also verify secure storage has the values
         val secureDeviceId = secureStorage.getString(KEY_SECURE_DEVICE_ID)
         val securePublicKey = cryptoManager.getIdentityPublicKey(IDENTITY_ALIAS)
+        val secureAdvertisingId = secureStorage.getString(KEY_SECURE_ADVERTISING_ID)
 
-        if (dbIdentity != null && secureDeviceId != null && securePublicKey != null) {
+        if (dbIdentity != null && secureDeviceId != null && securePublicKey != null && secureAdvertisingId != null) {
             return DeviceInfo(
                 deviceId = secureDeviceId,
                 name = dbIdentity.name,
                 publicKeyEd25519 = securePublicKey,
+                advertisingIdentifier = secureAdvertisingId,
                 createdAt = dbIdentity.createdAt
             )
         }
@@ -38,18 +41,21 @@ class IdentityManagerImpl @Inject constructor(
         // If not found, generate secure identity
         val deviceId = secureDeviceId ?: UUID.randomUUID().toString()
         val deviceName = getDeviceName()
+        val advertisingId = secureAdvertisingId ?: UUID.randomUUID().toString()
         
         // Generate new long-term Ed25519 keypair in Android Keystore / Tink
         val publicKeyBase64 = securePublicKey ?: cryptoManager.generateIdentityKeyPair(IDENTITY_ALIAS)
 
-        // Securely persist the generated UUID via keystore-backed SecureStorage
+        // Securely persist the generated UUIDs via keystore-backed SecureStorage
         secureStorage.putString(KEY_SECURE_DEVICE_ID, deviceId)
+        secureStorage.putString(KEY_SECURE_ADVERTISING_ID, advertisingId)
 
         val newIdentity = LocalIdentityEntity(
             idAlias = IDENTITY_ALIAS,
             deviceId = deviceId,
             name = deviceName,
             publicKeyEd25519 = publicKeyBase64,
+            advertisingIdentifier = advertisingId,
             createdAt = System.currentTimeMillis()
         )
 
@@ -59,6 +65,7 @@ class IdentityManagerImpl @Inject constructor(
             deviceId = deviceId,
             name = deviceName,
             publicKeyEd25519 = publicKeyBase64,
+            advertisingIdentifier = advertisingId,
             createdAt = newIdentity.createdAt
         )
     }
@@ -67,11 +74,13 @@ class IdentityManagerImpl @Inject constructor(
         val dbIdentity = localIdentityDao.getIdentity(IDENTITY_ALIAS) ?: return null
         val secureDeviceId = secureStorage.getString(KEY_SECURE_DEVICE_ID) ?: return null
         val securePublicKey = cryptoManager.getIdentityPublicKey(IDENTITY_ALIAS) ?: return null
+        val secureAdvertisingId = secureStorage.getString(KEY_SECURE_ADVERTISING_ID) ?: return null
 
         return DeviceInfo(
             deviceId = secureDeviceId,
             name = dbIdentity.name,
             publicKeyEd25519 = securePublicKey,
+            advertisingIdentifier = secureAdvertisingId,
             createdAt = dbIdentity.createdAt
         )
     }

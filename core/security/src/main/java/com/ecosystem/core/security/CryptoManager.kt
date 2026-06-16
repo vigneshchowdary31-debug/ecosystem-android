@@ -34,4 +34,9 @@ interface CryptoManager {
      * and the peer's ephemeral public key.
      */
     fun computeSharedSessionKey(localPrivateKey: ByteArray, peerPublicKeyBase64: String): ByteArray
+
+    /**
+     * Computes HMAC-SHA256 of the data using the specified key.
+     */
+    fun computeHmacSha256(key: ByteArray, data: ByteArray): ByteArray
 }

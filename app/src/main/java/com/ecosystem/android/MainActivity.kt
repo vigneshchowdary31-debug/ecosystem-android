@@ -19,11 +19,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.ecosystem.core.designsystem.theme.CompanionAppTheme
 import com.ecosystem.core.discovery.BlePermissionHelper
 import com.ecosystem.core.discovery.domain.repository.DiscoveryService
 import com.ecosystem.core.identity.IdentityManager
 import com.ecosystem.core.trusteddevices.TrustedDeviceRepository
+import com.ecosystem.feature.pairing.presentation.PairingViewModel
+import com.ecosystem.feature.pairing.presentation.screen.PairingScreen
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -82,6 +85,11 @@ class MainActivity : ComponentActivity() {
                                 onClick = { selectedTab = 2 },
                                 text = { Text("Database Debug") }
                             )
+                            Tab(
+                                selected = selectedTab == 3,
+                                onClick = { selectedTab = 3 },
+                                text = { Text("Pair Device") }
+                            )
                         }
 
                         when (selectedTab) {
@@ -91,6 +99,13 @@ class MainActivity : ComponentActivity() {
                                 discoveryService = discoveryService
                             )
                             2 -> DatabaseDebugScreen(repository = trustedDeviceRepository)
+                            3 -> {
+                                val pairingViewModel: PairingViewModel = hiltViewModel()
+                                PairingScreen(
+                                    viewModel = pairingViewModel,
+                                    onPairingSuccess = { selectedTab = 2 }
+                                )
+                            }
                         }
                     }
                 }

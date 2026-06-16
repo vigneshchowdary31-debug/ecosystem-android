@@ -66,7 +66,8 @@ class BleChannelImpl @Inject constructor(
 
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 _state.value = ChannelState.Connecting
-                gatt.discoverServices()
+                android.util.Log.d("BLE_ADVERTISE_DEBUG", "Connected to GATT Server. Requesting MTU 512...")
+                gatt.requestMtu(512)
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 _state.value = ChannelState.Disconnected
                 connectionCallback?.invoke(false)
@@ -74,6 +75,13 @@ class BleChannelImpl @Inject constructor(
                 bluetoothGatt = null
                 writeCharacteristic = null
             }
+        }
+
+        @SuppressLint("MissingPermission")
+        override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
+            android.util.Log.d("BLE_ADVERTISE_DEBUG", "onMtuChanged: negotiated MTU is $mtu, status=$status")
+            // Proceed to discover services after MTU negotiation
+            gatt.discoverServices()
         }
 
         @SuppressLint("MissingPermission")
@@ -108,11 +116,32 @@ class BleChannelImpl @Inject constructor(
             val descriptor = notifyChar.getDescriptor(CCC_DESCRIPTOR_UUID)
             if (descriptor != null) {
                 descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                gatt.writeDescriptor(descriptor)
+                val success = gatt.writeDescriptor(descriptor)
+                if (!success) {
+                    _state.value = ChannelState.Error("Failed to write CCC descriptor")
+                    connectionCallback?.invoke(false)
+                    connectionCallback = null
+                }
+            } else {
+                _state.value = ChannelState.Connected
+                connectionCallback?.invoke(true)
+                connectionCallback = null
             }
+        }
 
-            _state.value = ChannelState.Connected
-            connectionCallback?.invoke(true)
+        override fun onDescriptorWrite(
+            gatt: BluetoothGatt,
+            descriptor: BluetoothGattDescriptor,
+            status: Int
+        ) {
+            android.util.Log.d("BLE_ADVERTISE_DEBUG", "onDescriptorWrite status=$status")
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                _state.value = ChannelState.Connected
+                connectionCallback?.invoke(true)
+            } else {
+                _state.value = ChannelState.Error("Descriptor write failed status=$status")
+                connectionCallback?.invoke(false)
+            }
             connectionCallback = null
         }
 

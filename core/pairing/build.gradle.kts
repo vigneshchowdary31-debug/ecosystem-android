@@ -40,6 +40,7 @@ dependencies {
     implementation(project(":core:identity"))
     implementation(project(":core:networking"))
     implementation(project(":core:trusteddevices"))
+    implementation(project(":core:discovery"))
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.core)

@@ -11,6 +11,6 @@ interface DiscoveryService {
     fun startScanning(serviceUuid: String? = null)
     fun stopScanning()
     
-    fun startAdvertising(localDeviceId: String, localName: String)
+    fun startAdvertising(localDeviceId: String, localName: String, advertisingIdentifier: String)
     fun stopAdvertising()
 }

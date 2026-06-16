@@ -198,7 +198,7 @@ fun BleDebugScreen(
                             scope.launch {
                                 Log.d("BLE_DEBUG", "Initiating advertising start")
                                 val identity = identityManager.getIdentity() ?: identityManager.getOrCreateIdentity()
-                                discoveryService.startAdvertising(identity.deviceId, identity.name)
+                                discoveryService.startAdvertising(identity.deviceId, identity.name, identity.advertisingIdentifier)
                             }
                         },
                         modifier = Modifier.weight(1f),

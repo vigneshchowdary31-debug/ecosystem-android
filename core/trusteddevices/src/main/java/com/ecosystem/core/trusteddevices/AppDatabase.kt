@@ -10,7 +10,7 @@ import com.ecosystem.core.identity.LocalIdentityEntity
         TrustedDeviceEntity::class,
         LocalIdentityEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

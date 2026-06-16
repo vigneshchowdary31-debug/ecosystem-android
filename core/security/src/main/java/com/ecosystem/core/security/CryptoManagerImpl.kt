@@ -4,7 +4,6 @@ import android.util.Base64
 import com.google.crypto.tink.subtle.Ed25519Sign
 import com.google.crypto.tink.subtle.Ed25519Verify
 import com.google.crypto.tink.subtle.X25519
-import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -59,8 +58,20 @@ class CryptoManagerImpl @Inject constructor(
         val peerPublicKeyRaw = Base64.decode(peerPublicKeyBase64, Base64.NO_WRAP)
         val sharedSecret = X25519.computeSharedSecret(localPrivateKey, peerPublicKeyRaw)
 
-        // Deriving AES-256 session key using SHA-256
-        val sha256 = MessageDigest.getInstance("SHA-256")
-        return sha256.digest(sharedSecret)
+        // Deriving AES-256 session key using HKDF-SHA256 (Tink subtle helper)
+        return com.google.crypto.tink.subtle.Hkdf.computeHkdf(
+            "HmacSHA256",
+            sharedSecret,
+            ByteArray(0),
+            ByteArray(0),
+            32
+        )
+    }
+
+    override fun computeHmacSha256(key: ByteArray, data: ByteArray): ByteArray {
+        val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+        val secretKeySpec = javax.crypto.spec.SecretKeySpec(key, "HmacSHA256")
+        mac.init(secretKeySpec)
+        return mac.doFinal(data)
     }
 }

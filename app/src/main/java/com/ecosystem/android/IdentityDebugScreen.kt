@@ -112,6 +112,8 @@ fun IdentityDebugScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         DebugItem(label = "Device UUID", value = info.deviceId)
                         Spacer(modifier = Modifier.height(12.dp))
+                        DebugItem(label = "BLE Advertising ID", value = info.advertisingIdentifier)
+                        Spacer(modifier = Modifier.height(12.dp))
                         DebugItem(label = "App Version", value = appVersion)
                         Spacer(modifier = Modifier.height(12.dp))
                         DebugItem(label = "Platform", value = platform)

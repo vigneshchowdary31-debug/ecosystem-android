@@ -33,10 +33,13 @@ class IdentityManagerTest {
         // Given
         coEvery { localIdentityDao.getIdentity(any()) } returns null
         every { secureStorage.getString("identity_device_id") } returns null
+        every { secureStorage.getString("identity_advertising_id") } returns null
         every { cryptoManager.getIdentityPublicKey(any()) } returns null
 
         val uuidSlot = slot<String>()
+        val adUuidSlot = slot<String>()
         every { secureStorage.putString("identity_device_id", capture(uuidSlot)) } returns Unit
+        every { secureStorage.putString("identity_advertising_id", capture(adUuidSlot)) } returns Unit
         every { cryptoManager.generateIdentityKeyPair("primary_device_identity") } returns "mock_pub_key"
         coEvery { localIdentityDao.insertIdentity(any()) } returns Unit
 
@@ -48,8 +51,11 @@ class IdentityManagerTest {
         assertEquals("mock_pub_key", deviceInfo.publicKeyEd25519)
         assertTrue(uuidSlot.isCaptured)
         assertEquals(uuidSlot.captured, deviceInfo.deviceId)
+        assertTrue(adUuidSlot.isCaptured)
+        assertEquals(adUuidSlot.captured, deviceInfo.advertisingIdentifier)
 
         verify { secureStorage.putString("identity_device_id", any()) }
+        verify { secureStorage.putString("identity_advertising_id", any()) }
         verify { cryptoManager.generateIdentityKeyPair("primary_device_identity") }
         coVerify { localIdentityDao.insertIdentity(any()) }
     }
@@ -57,18 +63,21 @@ class IdentityManagerTest {
     @Test
     fun `getOrCreateIdentity returns existing identity on subsequent launches`() = runTest {
         // Given
-        val existingUuid = "existing-secure-uuid-1234"
+        val existingUuid = "87654321-4321-4321-4321-210987654321"
         val existingPubKey = "existing_pub_key"
+        val existingAdId = "12345678-1234-1234-1234-1234567890ab"
         val mockEntity = LocalIdentityEntity(
             idAlias = "primary_device_identity",
             deviceId = existingUuid,
             name = "Test Device",
             publicKeyEd25519 = existingPubKey,
+            advertisingIdentifier = existingAdId,
             createdAt = 1000L
         )
 
         coEvery { localIdentityDao.getIdentity("primary_device_identity") } returns mockEntity
         every { secureStorage.getString("identity_device_id") } returns existingUuid
+        every { secureStorage.getString("identity_advertising_id") } returns existingAdId
         every { cryptoManager.getIdentityPublicKey("primary_device_identity") } returns existingPubKey
 
         // When
@@ -78,6 +87,7 @@ class IdentityManagerTest {
         assertNotNull(deviceInfo)
         assertEquals(existingUuid, deviceInfo.deviceId)
         assertEquals(existingPubKey, deviceInfo.publicKeyEd25519)
+        assertEquals(existingAdId, deviceInfo.advertisingIdentifier)
 
         verify(exactly = 0) { secureStorage.putString(any(), any()) }
         verify(exactly = 0) { cryptoManager.generateIdentityKeyPair(any()) }

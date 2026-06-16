@@ -61,13 +61,31 @@ class DiscoveryServiceImpl @Inject constructor(
             val rssi = result.rssi
             val uuids = result.scanRecord?.serviceUuids?.map { it.uuid.toString() } ?: emptyList()
 
+            android.util.Log.d(
+                "BLE_SCAN_DEBUG",
+                """
+                Name=${device.name}
+                Address=${device.address}
+                RSSI=${result.rssi}
+                ServiceUUIDs=${result.scanRecord?.serviceUuids}
+                """.trimIndent()
+            )
+
+            val targetUuid = com.ecosystem.core.common.BleConstants.SERVICE_UUID_STRING
+            val hasContinuityService = uuids.any { it.equals(targetUuid, ignoreCase = true) }
+            android.util.Log.d("BLE_SCAN_DEBUG", "Continuity Service UUID Detected: $hasContinuityService")
+
+            val advIdentifier: String? = null
+
             val discovered = DiscoveredDevice(
                 macAddress = address,
                 name = name,
                 rssi = rssi,
-                serviceUuids = uuids
+                serviceUuids = uuids,
+                advertisingIdentifier = advIdentifier
             )
             discoveredDevicesMap[address] = discovered
+            android.util.Log.d("BLE_SCAN_DEBUG", "Number of results received: ${discoveredDevicesMap.size}")
             _scanResults.value = discoveredDevicesMap.values.toList().sortedByDescending { it.rssi }
         }
 
@@ -119,6 +137,7 @@ class DiscoveryServiceImpl @Inject constructor(
             .build()
 
         try {
+            android.util.Log.d("BLE_SCAN_DEBUG", "Scan started")
             scanner.startScan(filters.takeIf { it.isNotEmpty() }, settings, scanCallback)
             _isScanning.value = true
         } catch (e: Exception) {
@@ -133,6 +152,7 @@ class DiscoveryServiceImpl @Inject constructor(
         if (!_isScanning.value || scanner == null) return
 
         try {
+            android.util.Log.d("BLE_SCAN_DEBUG", "Scan stopped")
             scanner.stopScan(scanCallback)
         } catch (e: Exception) {
             android.util.Log.e("BLE_ADVERTISE_DEBUG", "Exception stopping scan", e)
@@ -142,7 +162,7 @@ class DiscoveryServiceImpl @Inject constructor(
     }
 
     @SuppressLint("MissingPermission")
-    override fun startAdvertising(localDeviceId: String, localName: String) {
+    override fun startAdvertising(localDeviceId: String, localName: String, advertisingIdentifier: String) {
         val hasPermissions = com.ecosystem.core.discovery.BlePermissionHelper.hasPermissions(context)
         val isSupported = bluetoothAdapter?.isMultipleAdvertisementSupported == true
         val advertiser = bleAdvertiser
@@ -156,6 +176,7 @@ class DiscoveryServiceImpl @Inject constructor(
         android.util.Log.d("BLE_ADVERTISE_DEBUG", "  - Bluetooth Enabled: $isEnabled")
         android.util.Log.d("BLE_ADVERTISE_DEBUG", "  - Service UUID: $targetUuid")
         android.util.Log.d("BLE_ADVERTISE_DEBUG", "  - Device Name: $localName")
+        android.util.Log.d("BLE_ADVERTISE_DEBUG", "  - Advertising Identifier: $advertisingIdentifier")
 
         if (!hasPermissions) {
             android.util.Log.w("BLE_ADVERTISE_DEBUG", "Aborting: Permissions not granted.")
@@ -186,14 +207,27 @@ class DiscoveryServiceImpl @Inject constructor(
 
         android.util.Log.d("BLE_ADVERTISE_DEBUG", "Advertise Settings: Mode=LowLatency, TxPower=High, Connectable=true")
 
+        val uuidBytes = try {
+            val uuidObj = java.util.UUID.fromString(advertisingIdentifier)
+            val byteBuffer = java.nio.ByteBuffer.wrap(ByteArray(16))
+            byteBuffer.putLong(uuidObj.mostSignificantBits)
+            byteBuffer.putLong(uuidObj.leastSignificantBits)
+            byteBuffer.array()
+        } catch (e: Exception) {
+            ByteArray(16)
+        }
+
         // Split data to avoid ADVERTISE_FAILED_DATA_TOO_LARGE
+        // Main packet contains manufacturer data with stable advertisingIdentifier
         val advertiseData = AdvertiseData.Builder()
-            .setIncludeDeviceName(false) // Do not include in main advertise packet to save space (128-bit UUID is 16 bytes)
-            .addServiceUuid(ParcelUuid(targetUuid))
+            .setIncludeDeviceName(false)
+            .addManufacturerData(0xFFFF, uuidBytes)
             .build()
 
+        // Scan response contains our service UUID and name
         val scanResponseData = AdvertiseData.Builder()
-            .setIncludeDeviceName(true) // Include the name in the scan response instead
+            .setIncludeDeviceName(true)
+            .addServiceUuid(ParcelUuid(targetUuid))
             .build()
 
         try {
