@@ -1,24 +1,18 @@
 package com.ecosystem.core.networking.di
 
-import android.content.Context
-import com.ecosystem.core.networking.BleChannel
-import com.ecosystem.core.networking.BleChannelImpl
+import com.ecosystem.core.networking.ble.BlePairingTransport
+import com.ecosystem.core.pairing.PairingTransport
+import dagger.Binds
 import dagger.Module
-import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object NetworkingModule {
+abstract class NetworkingModule {
 
-    @Provides
+    @Binds
     @Singleton
-    fun provideBleChannel(
-        @ApplicationContext context: Context
-    ): BleChannel {
-        return BleChannelImpl(context)
-    }
+    abstract fun bindPairingTransport(impl: BlePairingTransport): PairingTransport
 }

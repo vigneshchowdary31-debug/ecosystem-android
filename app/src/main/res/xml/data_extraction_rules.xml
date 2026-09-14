@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Identity material and trusted devices never leave this device (Android 12+). -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="ecosystem_secure_prefs.xml" />
+        <exclude domain="database" path="continuity_trusted_devices_db" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="ecosystem_secure_prefs.xml" />
+        <exclude domain="database" path="continuity_trusted_devices_db" />
+    </device-transfer>
+</data-extraction-rules>

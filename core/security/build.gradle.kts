@@ -36,17 +36,19 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(project(":core:common"))
-    
-    // Security Crypto
-    implementation(libs.androidx.security.crypto)
+
+    // Ed25519 identity keys (Android Keystore has no Ed25519 support at minSdk 26)
     implementation(libs.tink.android)
-    
+
     // Hilt DI
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
-    
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
+
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.test.runner)
 }

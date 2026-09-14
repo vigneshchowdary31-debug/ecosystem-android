@@ -1,15 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <!-- Reads the Wi-Fi address sent (authenticated) to the Mac during pairing. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!--
+        Backup is off: the identity key and the trusted-device store are sealed with a
+        non-exportable Keystore key, so a copy on another device or in the cloud is useless
+        and would only leak encrypted identity material. The extraction rules also cover
+        Android 12+ device-to-device transfer, which allowBackup alone does not stop.
+    -->
     <application
         android:name=".CompanionApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@android:drawable/sym_def_app_icon"
         android:label="Companion App"
         android:roundIcon="@android:drawable/sym_def_app_icon"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.Material.NoActionBar">
-        
+        android:theme="@android:style/Theme.Material.NoActionBar"
+        tools:targetApi="31">
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -19,7 +35,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        
+
     </application>
 
 </manifest>

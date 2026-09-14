@@ -36,8 +36,9 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(project(":core:common"))
-    implementation(project(":core:security"))
+    api(project(":core:security"))
     implementation(libs.room.runtime)
+    implementation(libs.kotlinx.coroutines.core)
 
     // Hilt DI
     implementation(libs.hilt.android)
@@ -45,6 +46,6 @@ dependencies {
 
     // Testing
     testImplementation(libs.junit)
-    testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.tink.android)
 }

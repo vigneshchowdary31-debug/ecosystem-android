@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+// BLE transport for pairing: a GATT client implementing the pairing domain's PairingTransport port.
 android {
     namespace = "com.ecosystem.core.networking"
     compileSdk = 34
@@ -36,7 +37,8 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(project(":core:common"))
-    implementation(project(":core:security"))
+    implementation(project(":core:pairing"))
+    implementation(project(":core:protocol"))
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.core)

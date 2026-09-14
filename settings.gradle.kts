@@ -16,6 +16,7 @@ dependencyResolutionManagement {
 rootProject.name = "ecosystem-android"
 include(":app")
 include(":core:common")
+include(":core:protocol")
 include(":core:security")
 include(":core:identity")
 include(":core:trusteddevices")

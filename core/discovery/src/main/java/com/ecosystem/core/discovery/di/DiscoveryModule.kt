@@ -1,24 +1,18 @@
 package com.ecosystem.core.discovery.di
 
-import android.content.Context
 import com.ecosystem.core.discovery.data.ble.DiscoveryServiceImpl
 import com.ecosystem.core.discovery.domain.repository.DiscoveryService
+import dagger.Binds
 import dagger.Module
-import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object DiscoveryModule {
+abstract class DiscoveryModule {
 
-    @Provides
+    @Binds
     @Singleton
-    fun provideDiscoveryService(
-        @ApplicationContext context: Context
-    ): DiscoveryService {
-        return DiscoveryServiceImpl(context)
-    }
+    abstract fun bindDiscoveryService(impl: DiscoveryServiceImpl): DiscoveryService
 }

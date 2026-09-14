@@ -1,40 +1,25 @@
 package com.ecosystem.core.security.di
 
-import android.content.Context
-import com.ecosystem.core.security.KeystoreManager
+import com.ecosystem.core.security.CryptoManager
+import com.ecosystem.core.security.CryptoManagerImpl
 import com.ecosystem.core.security.SecureStorage
 import com.ecosystem.core.security.SecureStorageImpl
+import dagger.Binds
 import dagger.Module
-import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+/** Implementations use constructor injection; this module only binds interfaces. */
 @Module
 @InstallIn(SingletonComponent::class)
-object SecurityModule {
+abstract class SecurityModule {
 
-    @Provides
+    @Binds
     @Singleton
-    fun provideKeystoreManager(): KeystoreManager {
-        return KeystoreManager()
-    }
+    abstract fun bindSecureStorage(impl: SecureStorageImpl): SecureStorage
 
-    @Provides
+    @Binds
     @Singleton
-    fun provideSecureStorage(
-        @ApplicationContext context: Context,
-        keystoreManager: KeystoreManager
-    ): SecureStorage {
-        return SecureStorageImpl(context, keystoreManager)
-    }
-
-    @Provides
-    @Singleton
-    fun provideCryptoManager(
-        secureStorage: SecureStorage
-    ): com.ecosystem.core.security.CryptoManager {
-        return com.ecosystem.core.security.CryptoManagerImpl(secureStorage)
-    }
+    abstract fun bindCryptoManager(impl: CryptoManagerImpl): CryptoManager
 }

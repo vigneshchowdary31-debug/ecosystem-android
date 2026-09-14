@@ -13,8 +13,11 @@ import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.os.ParcelUuid
 import com.ecosystem.core.common.BleConstants
+import com.ecosystem.core.common.BlePermissionHelper
+import com.ecosystem.core.common.log.AppLog
 import com.ecosystem.core.discovery.domain.model.DiscoveredDevice
 import com.ecosystem.core.discovery.domain.repository.DiscoveryService
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,9 +25,10 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** Scan/advertise service behind the BLE debug tools. Pairing uses its own scanner (BlePairingTransport). */
 @Singleton
 class DiscoveryServiceImpl @Inject constructor(
-    private val context: Context
+    @ApplicationContext private val context: Context
 ) : DiscoveryService {
 
     private val bluetoothManager by lazy {
@@ -61,7 +65,7 @@ class DiscoveryServiceImpl @Inject constructor(
             val rssi = result.rssi
             val uuids = result.scanRecord?.serviceUuids?.map { it.uuid.toString() } ?: emptyList()
 
-            android.util.Log.d(
+            AppLog.d(
                 "BLE_SCAN_DEBUG",
                 """
                 Name=${device.name}
@@ -73,7 +77,7 @@ class DiscoveryServiceImpl @Inject constructor(
 
             val targetUuid = com.ecosystem.core.common.BleConstants.SERVICE_UUID_STRING
             val hasContinuityService = uuids.any { it.equals(targetUuid, ignoreCase = true) }
-            android.util.Log.d("BLE_SCAN_DEBUG", "Continuity Service UUID Detected: $hasContinuityService")
+            AppLog.d("BLE_SCAN_DEBUG", "Continuity Service UUID Detected: $hasContinuityService")
 
             val advIdentifier: String? = null
 
@@ -85,19 +89,19 @@ class DiscoveryServiceImpl @Inject constructor(
                 advertisingIdentifier = advIdentifier
             )
             discoveredDevicesMap[address] = discovered
-            android.util.Log.d("BLE_SCAN_DEBUG", "Number of results received: ${discoveredDevicesMap.size}")
+            AppLog.d("BLE_SCAN_DEBUG", "Number of results received: ${discoveredDevicesMap.size}")
             _scanResults.value = discoveredDevicesMap.values.toList().sortedByDescending { it.rssi }
         }
 
         override fun onScanFailed(errorCode: Int) {
-            android.util.Log.e("BLE_ADVERTISE_DEBUG", "Scan failed with error code: $errorCode")
+            AppLog.e("BLE_ADVERTISE_DEBUG", "Scan failed with error code: $errorCode")
             _isScanning.value = false
         }
     }
 
     private val advertiseCallback = object : AdvertiseCallback() {
         override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {
-            android.util.Log.d("BLE_ADVERTISE_DEBUG", "Advertising started successfully (onStartSuccess)")
+            AppLog.d("BLE_ADVERTISE_DEBUG", "Advertising started successfully (onStartSuccess)")
             _isAdvertising.value = true
         }
 
@@ -110,18 +114,18 @@ class DiscoveryServiceImpl @Inject constructor(
                 ADVERTISE_FAILED_TOO_MANY_ADVERTISERS -> "ADVERTISE_FAILED_TOO_MANY_ADVERTISERS"
                 else -> "UNKNOWN_ERROR ($errorCode)"
             }
-            android.util.Log.e("BLE_ADVERTISE_DEBUG", "Advertising failed to start (onStartFailure). Error: $reason")
+            AppLog.e("BLE_ADVERTISE_DEBUG", "Advertising failed to start (onStartFailure). Error: $reason")
             _isAdvertising.value = false
         }
     }
 
     @SuppressLint("MissingPermission")
     override fun startScanning(serviceUuid: String?) {
-        val hasPermissions = com.ecosystem.core.discovery.BlePermissionHelper.hasPermissions(context)
+        val hasPermissions = BlePermissionHelper.hasAllPermissions(context)
         val isEnabled = bluetoothAdapter?.isEnabled == true
         val scanner = bleScanner
 
-        android.util.Log.d("BLE_ADVERTISE_DEBUG", "startScanning called: permissions=$hasPermissions, enabled=$isEnabled, scannerAvailable=${scanner != null}")
+        AppLog.d("BLE_ADVERTISE_DEBUG", "startScanning called: permissions=$hasPermissions, enabled=$isEnabled, scannerAvailable=${scanner != null}")
 
         if (_isScanning.value || scanner == null || !isEnabled) return
 
@@ -137,11 +141,11 @@ class DiscoveryServiceImpl @Inject constructor(
             .build()
 
         try {
-            android.util.Log.d("BLE_SCAN_DEBUG", "Scan started")
+            AppLog.d("BLE_SCAN_DEBUG", "Scan started")
             scanner.startScan(filters.takeIf { it.isNotEmpty() }, settings, scanCallback)
             _isScanning.value = true
         } catch (e: Exception) {
-            android.util.Log.e("BLE_ADVERTISE_DEBUG", "Exception starting scan", e)
+            AppLog.e("BLE_ADVERTISE_DEBUG", "Exception starting scan", e)
             _isScanning.value = false
         }
     }
@@ -152,10 +156,10 @@ class DiscoveryServiceImpl @Inject constructor(
         if (!_isScanning.value || scanner == null) return
 
         try {
-            android.util.Log.d("BLE_SCAN_DEBUG", "Scan stopped")
+            AppLog.d("BLE_SCAN_DEBUG", "Scan stopped")
             scanner.stopScan(scanCallback)
         } catch (e: Exception) {
-            android.util.Log.e("BLE_ADVERTISE_DEBUG", "Exception stopping scan", e)
+            AppLog.e("BLE_ADVERTISE_DEBUG", "Exception stopping scan", e)
         } finally {
             _isScanning.value = false
         }
@@ -163,39 +167,39 @@ class DiscoveryServiceImpl @Inject constructor(
 
     @SuppressLint("MissingPermission")
     override fun startAdvertising(localDeviceId: String, localName: String, advertisingIdentifier: String) {
-        val hasPermissions = com.ecosystem.core.discovery.BlePermissionHelper.hasPermissions(context)
+        val hasPermissions = BlePermissionHelper.hasAllPermissions(context)
         val isSupported = bluetoothAdapter?.isMultipleAdvertisementSupported == true
         val advertiser = bleAdvertiser
         val isEnabled = bluetoothAdapter?.isEnabled == true
         val targetUuid = BleConstants.SERVICE_UUID
 
-        android.util.Log.d("BLE_ADVERTISE_DEBUG", "startAdvertising called:")
-        android.util.Log.d("BLE_ADVERTISE_DEBUG", "  - Permissions Granted: $hasPermissions")
-        android.util.Log.d("BLE_ADVERTISE_DEBUG", "  - Multiple Adv Supported: $isSupported")
-        android.util.Log.d("BLE_ADVERTISE_DEBUG", "  - Advertiser Available: ${advertiser != null}")
-        android.util.Log.d("BLE_ADVERTISE_DEBUG", "  - Bluetooth Enabled: $isEnabled")
-        android.util.Log.d("BLE_ADVERTISE_DEBUG", "  - Service UUID: $targetUuid")
-        android.util.Log.d("BLE_ADVERTISE_DEBUG", "  - Device Name: $localName")
-        android.util.Log.d("BLE_ADVERTISE_DEBUG", "  - Advertising Identifier: $advertisingIdentifier")
+        AppLog.d("BLE_ADVERTISE_DEBUG", "startAdvertising called:")
+        AppLog.d("BLE_ADVERTISE_DEBUG", "  - Permissions Granted: $hasPermissions")
+        AppLog.d("BLE_ADVERTISE_DEBUG", "  - Multiple Adv Supported: $isSupported")
+        AppLog.d("BLE_ADVERTISE_DEBUG", "  - Advertiser Available: ${advertiser != null}")
+        AppLog.d("BLE_ADVERTISE_DEBUG", "  - Bluetooth Enabled: $isEnabled")
+        AppLog.d("BLE_ADVERTISE_DEBUG", "  - Service UUID: $targetUuid")
+        AppLog.d("BLE_ADVERTISE_DEBUG", "  - Device Name: $localName")
+        AppLog.d("BLE_ADVERTISE_DEBUG", "  - Advertising Identifier: $advertisingIdentifier")
 
         if (!hasPermissions) {
-            android.util.Log.w("BLE_ADVERTISE_DEBUG", "Aborting: Permissions not granted.")
+            AppLog.w("BLE_ADVERTISE_DEBUG", "Aborting: Permissions not granted.")
             return
         }
         if (!isSupported) {
-            android.util.Log.w("BLE_ADVERTISE_DEBUG", "Aborting: Multiple advertisement not supported by hardware.")
+            AppLog.w("BLE_ADVERTISE_DEBUG", "Aborting: Multiple advertisement not supported by hardware.")
             return
         }
         if (advertiser == null) {
-            android.util.Log.w("BLE_ADVERTISE_DEBUG", "Aborting: BluetoothLeAdvertiser is null.")
+            AppLog.w("BLE_ADVERTISE_DEBUG", "Aborting: BluetoothLeAdvertiser is null.")
             return
         }
         if (!isEnabled) {
-            android.util.Log.w("BLE_ADVERTISE_DEBUG", "Aborting: Bluetooth is disabled.")
+            AppLog.w("BLE_ADVERTISE_DEBUG", "Aborting: Bluetooth is disabled.")
             return
         }
         if (_isAdvertising.value) {
-            android.util.Log.d("BLE_ADVERTISE_DEBUG", "Aborting: Already advertising.")
+            AppLog.d("BLE_ADVERTISE_DEBUG", "Aborting: Already advertising.")
             return
         }
 
@@ -205,7 +209,7 @@ class DiscoveryServiceImpl @Inject constructor(
             .setConnectable(true)
             .build()
 
-        android.util.Log.d("BLE_ADVERTISE_DEBUG", "Advertise Settings: Mode=LowLatency, TxPower=High, Connectable=true")
+        AppLog.d("BLE_ADVERTISE_DEBUG", "Advertise Settings: Mode=LowLatency, TxPower=High, Connectable=true")
 
         val uuidBytes = try {
             val uuidObj = java.util.UUID.fromString(advertisingIdentifier)
@@ -231,10 +235,10 @@ class DiscoveryServiceImpl @Inject constructor(
             .build()
 
         try {
-            android.util.Log.d("BLE_ADVERTISE_DEBUG", "Attempting to start advertising...")
+            AppLog.d("BLE_ADVERTISE_DEBUG", "Attempting to start advertising...")
             advertiser.startAdvertising(settings, advertiseData, scanResponseData, advertiseCallback)
         } catch (e: Exception) {
-            android.util.Log.e("BLE_ADVERTISE_DEBUG", "Exception starting advertising", e)
+            AppLog.e("BLE_ADVERTISE_DEBUG", "Exception starting advertising", e)
             _isAdvertising.value = false
         }
     }
@@ -246,9 +250,9 @@ class DiscoveryServiceImpl @Inject constructor(
 
         try {
             advertiser.stopAdvertising(advertiseCallback)
-            android.util.Log.d("BLE_ADVERTISE_DEBUG", "Advertising stopped (stopAdvertising called)")
+            AppLog.d("BLE_ADVERTISE_DEBUG", "Advertising stopped (stopAdvertising called)")
         } catch (e: Exception) {
-            android.util.Log.e("BLE_ADVERTISE_DEBUG", "Exception stopping advertising", e)
+            AppLog.e("BLE_ADVERTISE_DEBUG", "Exception stopping advertising", e)
         } finally {
             _isAdvertising.value = false
         }

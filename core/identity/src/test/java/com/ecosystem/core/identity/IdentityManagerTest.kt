@@ -1,125 +1,169 @@
 package com.ecosystem.core.identity
 
+import com.ecosystem.core.common.DispatcherProvider
 import com.ecosystem.core.security.CryptoManager
+import com.ecosystem.core.security.CryptoManagerImpl
+import com.ecosystem.core.security.IdentityKeyState
+import com.ecosystem.core.security.IdentityKeyUnavailableException
+import com.ecosystem.core.security.SecureRead
 import com.ecosystem.core.security.SecureStorage
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.slot
-import io.mockk.verify
+import com.google.crypto.tink.subtle.Ed25519Verify
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Before
+import org.junit.Assert.fail
 import org.junit.Test
+import java.util.Base64
+import java.util.concurrent.atomic.AtomicInteger
 
 class IdentityManagerTest {
 
-    private val localIdentityDao: LocalIdentityDao = mockk()
-    private val cryptoManager: CryptoManager = mockk()
-    private val secureStorage: SecureStorage = mockk()
-    private lateinit var identityManager: IdentityManager
+    private class MemoryStorage : SecureStorage {
+        val values = LinkedHashMap<String, SecureRead>()
+        override fun putBytes(key: String, value: ByteArray) {
+            synchronized(values) { values[key] = SecureRead.Present(value.copyOf(), false) }
+        }
+        override fun readBytes(key: String): SecureRead = synchronized(values) {
+            when (val read = values[key]) {
+                null -> SecureRead.Missing
+                is SecureRead.Present -> SecureRead.Present(read.value.copyOf(), read.isLegacyFormat)
+                else -> read
+            }
+        }
+        override fun putString(key: String, value: String) = putBytes(key, value.toByteArray())
+        override fun getString(key: String) = (readBytes(key) as? SecureRead.Present)?.let { String(it.value) }
+        override fun remove(key: String) {
+            synchronized(values) { values.remove(key) }
+        }
+        override fun clear() = synchronized(values) { values.clear() }
+    }
 
-    @Before
-    fun setUp() {
-        identityManager = IdentityManagerImpl(localIdentityDao, cryptoManager, secureStorage)
+    private class MemoryDao : LocalIdentityDao {
+        var row: LocalIdentityEntity? = null
+        override suspend fun getIdentity(alias: String) = row
+        override suspend fun insertIdentity(identity: LocalIdentityEntity) {
+            row = identity
+        }
+        override suspend fun deleteIdentity(alias: String) {
+            row = null
+        }
+    }
+
+    private class CountingCrypto(private val delegate: CryptoManager) : CryptoManager by delegate {
+        val generated = AtomicInteger()
+        override fun generateIdentityKeyPair(alias: String): ByteArray {
+            generated.incrementAndGet()
+            Thread.sleep(20)
+            return delegate.generateIdentityKeyPair(alias)
+        }
+    }
+
+    private class TestDispatchers(dispatcher: CoroutineDispatcher) : DispatcherProvider {
+        override val main = dispatcher
+        override val io = dispatcher
+        override val default = dispatcher
+        override val unconfined = dispatcher
+    }
+
+    private val storage = MemoryStorage()
+    private val dao = MemoryDao()
+    private val crypto = CountingCrypto(CryptoManagerImpl(storage))
+
+    private fun manager(dispatcher: CoroutineDispatcher = Dispatchers.Unconfined) =
+        IdentityManagerImpl(dao, crypto, storage, TestDispatchers(dispatcher))
+
+    @Test
+    fun `first launch creates a stable identity and later launches return it`() = runTest {
+        val first = manager().getOrCreateIdentity()
+        val second = manager().getOrCreateIdentity()
+        assertEquals(first, second)
+        assertEquals(1, crypto.generated.get())
+        assertTrue(first.deviceId.matches(Regex("[0-9a-f-]{36}")))
+        assertEquals(32, Base64.getDecoder().decode(first.publicKeyEd25519).size)
     }
 
     @Test
-    fun `getOrCreateIdentity generates new UUID and keys on first launch`() = runTest {
-        // Given
-        coEvery { localIdentityDao.getIdentity(any()) } returns null
-        every { secureStorage.getString("identity_device_id") } returns null
-        every { secureStorage.getString("identity_advertising_id") } returns null
-        every { cryptoManager.getIdentityPublicKey(any()) } returns null
-
-        val uuidSlot = slot<String>()
-        val adUuidSlot = slot<String>()
-        every { secureStorage.putString("identity_device_id", capture(uuidSlot)) } returns Unit
-        every { secureStorage.putString("identity_advertising_id", capture(adUuidSlot)) } returns Unit
-        every { cryptoManager.generateIdentityKeyPair("primary_device_identity") } returns "mock_pub_key"
-        coEvery { localIdentityDao.insertIdentity(any()) } returns Unit
-
-        // When
-        val deviceInfo = identityManager.getOrCreateIdentity()
-
-        // Then
-        assertNotNull(deviceInfo)
-        assertEquals("mock_pub_key", deviceInfo.publicKeyEd25519)
-        assertTrue(uuidSlot.isCaptured)
-        assertEquals(uuidSlot.captured, deviceInfo.deviceId)
-        assertTrue(adUuidSlot.isCaptured)
-        assertEquals(adUuidSlot.captured, deviceInfo.advertisingIdentifier)
-
-        verify { secureStorage.putString("identity_device_id", any()) }
-        verify { secureStorage.putString("identity_advertising_id", any()) }
-        verify { cryptoManager.generateIdentityKeyPair("primary_device_identity") }
-        coVerify { localIdentityDao.insertIdentity(any()) }
+    fun `concurrent first launches create exactly one identity`() {
+        val identityManager = manager(Dispatchers.Default)
+        val identities = runBlocking {
+            (1..8).map { async(Dispatchers.Default) { identityManager.getOrCreateIdentity() } }.awaitAll()
+        }
+        assertEquals(1, identities.toSet().size)
+        assertEquals(1, crypto.generated.get())
     }
 
     @Test
-    fun `getOrCreateIdentity returns existing identity on subsequent launches`() = runTest {
-        // Given
-        val existingUuid = "87654321-4321-4321-4321-210987654321"
-        val existingPubKey = "existing_pub_key"
-        val existingAdId = "12345678-1234-1234-1234-1234567890ab"
-        val mockEntity = LocalIdentityEntity(
-            idAlias = "primary_device_identity",
-            deviceId = existingUuid,
-            name = "Test Device",
-            publicKeyEd25519 = existingPubKey,
-            advertisingIdentifier = existingAdId,
-            createdAt = 1000L
-        )
-
-        coEvery { localIdentityDao.getIdentity("primary_device_identity") } returns mockEntity
-        every { secureStorage.getString("identity_device_id") } returns existingUuid
-        every { secureStorage.getString("identity_advertising_id") } returns existingAdId
-        every { cryptoManager.getIdentityPublicKey("primary_device_identity") } returns existingPubKey
-
-        // When
-        val deviceInfo = identityManager.getOrCreateIdentity()
-
-        // Then
-        assertNotNull(deviceInfo)
-        assertEquals(existingUuid, deviceInfo.deviceId)
-        assertEquals(existingPubKey, deviceInfo.publicKeyEd25519)
-        assertEquals(existingAdId, deviceInfo.advertisingIdentifier)
-
-        verify(exactly = 0) { secureStorage.putString(any(), any()) }
-        verify(exactly = 0) { cryptoManager.generateIdentityKeyPair(any()) }
-        coVerify(exactly = 0) { localIdentityDao.insertIdentity(any()) }
+    fun `losing the database row does not change the identity`() = runTest {
+        val original = manager().getOrCreateIdentity()
+        dao.row = null
+        val afterWipe = manager().getOrCreateIdentity()
+        assertEquals(original.deviceId, afterWipe.deviceId)
+        assertEquals(original.publicKeyEd25519, afterWipe.publicKeyEd25519)
+        assertEquals(original.advertisingIdentifier, afterWipe.advertisingIdentifier)
     }
 
     @Test
-    fun `getIdentity returns null when no identity exists`() = runTest {
-        // Given
-        coEvery { localIdentityDao.getIdentity(any()) } returns null
-        every { secureStorage.getString(any()) } returns null
-        every { cryptoManager.getIdentityPublicKey(any()) } returns null
-
-        // When
-        val deviceInfo = identityManager.getIdentity()
-
-        // Then
-        assertNull(deviceInfo)
+    fun `unreadable identity material fails loudly instead of rotating`() = runTest {
+        manager().getOrCreateIdentity()
+        storage.values["identity_device_id"] = SecureRead.Unreadable(IllegalStateException("Keystore key lost"))
+        try {
+            manager().getOrCreateIdentity()
+            fail("Expected IdentityKeyUnavailableException")
+        } catch (expected: IdentityKeyUnavailableException) {
+        }
+        assertTrue(storage.values["identity_device_id"] is SecureRead.Unreadable)
+        assertEquals(1, crypto.generated.get())
     }
 
     @Test
-    fun `signChallenge delegates challenge signing to CryptoManager`() = runTest {
-        // Given
-        val challenge = "challenge_data".toByteArray()
-        val expectedSignature = "signature_data".toByteArray()
-        every { cryptoManager.signWithIdentityKey("primary_device_identity", challenge) } returns expectedSignature
+    fun `unreadable private key fails loudly`() = runTest {
+        manager().getOrCreateIdentity()
+        storage.values["primary_device_identity_prv"] = SecureRead.Unreadable(IllegalStateException("lost"))
+        assertTrue(crypto.identityKeyState("primary_device_identity") is IdentityKeyState.Unreadable)
+        try {
+            manager().getOrCreateIdentity()
+            fail("Expected IdentityKeyUnavailableException")
+        } catch (expected: IdentityKeyUnavailableException) {
+        }
+    }
 
-        // When
-        val signature = identityManager.signChallenge(challenge)
+    @Test
+    fun `legacy device id text is kept and migrated`() = runTest {
+        val legacyId = "87654321-4321-4321-4321-210987654321"
+        storage.values["identity_device_id"] = SecureRead.Present(legacyId.toByteArray(), isLegacyFormat = true)
+        val identity = manager().getOrCreateIdentity()
+        assertEquals(legacyId, identity.deviceId)
+        assertEquals(false, (storage.values["identity_device_id"] as SecureRead.Present).isLegacyFormat)
+    }
 
-        // Then
-        assertEquals(expectedSignature, signature)
-        verify { cryptoManager.signWithIdentityKey("primary_device_identity", challenge) }
+    @Test
+    fun `signatures verify with the published public key`() = runTest {
+        val identityManager = manager()
+        val identity = identityManager.getOrCreateIdentity()
+        val data = "authentication input".toByteArray()
+        Ed25519Verify(Base64.getDecoder().decode(identity.publicKeyEd25519)).verify(identityManager.sign(data), data)
+    }
+
+    @Test
+    fun `getIdentity does not create an identity`() = runTest {
+        assertNull(manager().getIdentity())
+        assertEquals(0, crypto.generated.get())
+    }
+
+    @Test
+    fun `reset creates a new identity`() = runTest {
+        val identityManager = manager()
+        val original = identityManager.getOrCreateIdentity()
+        val reset = identityManager.resetIdentity()
+        assertNotEquals(original.deviceId, reset.deviceId)
+        assertNotEquals(original.publicKeyEd25519, reset.publicKeyEd25519)
+        assertEquals(reset, identityManager.getOrCreateIdentity())
     }
 }

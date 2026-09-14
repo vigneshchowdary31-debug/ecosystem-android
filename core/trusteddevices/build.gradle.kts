@@ -31,6 +31,16 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    sourceSets {
+        // Exported Room schemas feed MigrationTestHelper in the instrumented migration tests.
+        getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    }
+}
+
+kapt {
+    arguments {
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
 }
 
 dependencies {
@@ -55,4 +65,9 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
+
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.room.testing)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
 }

@@ -86,7 +86,7 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onBackground
             )
             Text(
-                text = "Keys are securely generated inside the hardware-backed keystore provider. All stored values are encrypted with AES-256-GCM.",
+                text = "Stored values are encrypted with an AES-256-GCM key held in Android Keystore (StrongBox when the device has one). The Ed25519 identity key is a software key that is only stored in that encrypted form.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 modifier = Modifier.padding(vertical = 8.dp)
@@ -98,7 +98,7 @@ fun SettingsScreen(
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "Hardware Authentication Key",
+                        text = "Encrypted token",
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontWeight = FontWeight.Bold
                         ),

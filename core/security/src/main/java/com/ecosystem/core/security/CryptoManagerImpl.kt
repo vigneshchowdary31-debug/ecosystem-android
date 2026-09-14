@@ -1,77 +1,103 @@
 package com.ecosystem.core.security
 
-import android.util.Base64
 import com.google.crypto.tink.subtle.Ed25519Sign
-import com.google.crypto.tink.subtle.Ed25519Verify
-import com.google.crypto.tink.subtle.X25519
+import java.security.GeneralSecurityException
+import java.util.Base64
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Ed25519 identity keys generated with Tink (software) and stored as a raw 32-byte seed
+ * sealed by [SecureStorage]. The seed exists in plaintext only inside [sign] and
+ * [identityKeyState], as a byte array that is zeroed before returning. Tink's signer keeps
+ * a derived scalar internally that cannot be wiped; it becomes garbage right after use.
+ */
 @Singleton
 class CryptoManagerImpl @Inject constructor(
-    private val secureStorage: SecureStorage
+    private val secureStorage: SecureStorage,
 ) : CryptoManager {
 
-    override fun generateIdentityKeyPair(alias: String): String {
+    override fun generateIdentityKeyPair(alias: String): ByteArray {
         val keyPair = Ed25519Sign.KeyPair.newKeyPair()
-        val privateKeyBase64 = Base64.encodeToString(keyPair.privateKey, Base64.NO_WRAP)
-        val publicKeyBase64 = Base64.encodeToString(keyPair.publicKey, Base64.NO_WRAP)
-
-        // SecureStorage encrypts values using Keystore AES-GCM before saving to SharedPreferences
-        secureStorage.putString("${alias}_prv", privateKeyBase64)
-        secureStorage.putString("${alias}_pub", publicKeyBase64)
-
-        return publicKeyBase64
+        val seed = keyPair.privateKey
+        try {
+            secureStorage.putBytes(privateKeyName(alias), seed)
+        } finally {
+            seed.fill(0)
+        }
+        secureStorage.putString(publicKeyName(alias), Base64.getEncoder().encodeToString(keyPair.publicKey))
+        return keyPair.publicKey
     }
 
-    override fun signWithIdentityKey(alias: String, data: ByteArray): ByteArray {
-        val privateKeyBase64 = secureStorage.getString("${alias}_prv")
-            ?: throw IllegalStateException("Identity key pair for alias '$alias' has not been generated.")
-        val privateKeyBytes = Base64.decode(privateKeyBase64, Base64.NO_WRAP)
-        val signer = Ed25519Sign(privateKeyBytes)
-        return signer.sign(data)
-    }
+    override fun identityKeyState(alias: String): IdentityKeyState =
+        when (val read = secureStorage.readBytes(privateKeyName(alias))) {
+            SecureRead.Missing -> IdentityKeyState.Missing
+            is SecureRead.Unreadable -> IdentityKeyState.Unreadable(read.cause)
+            is SecureRead.Present -> try {
+                val seed = seedFrom(alias, read)
+                try {
+                    IdentityKeyState.Present(Ed25519Sign.KeyPair.newKeyPairFromSeed(seed).publicKey)
+                } finally {
+                    seed.fill(0)
+                }
+            } catch (e: IdentityKeyUnavailableException) {
+                IdentityKeyState.Unreadable(e)
+            } catch (e: GeneralSecurityException) {
+                IdentityKeyState.Unreadable(e)
+            }
+        }
 
-    override fun verifySignature(publicKeyBase64: String, data: ByteArray, signature: ByteArray): Boolean {
-        return try {
-            val publicKeyBytes = Base64.decode(publicKeyBase64, Base64.NO_WRAP)
-            val verifier = Ed25519Verify(publicKeyBytes)
-            verifier.verify(signature, data)
-            true
-        } catch (e: Exception) {
-            false
+    override fun sign(alias: String, data: ByteArray): ByteArray {
+        val seed = when (val read = secureStorage.readBytes(privateKeyName(alias))) {
+            SecureRead.Missing -> throw IdentityKeyUnavailableException("No identity key for '$alias'")
+            is SecureRead.Unreadable ->
+                throw IdentityKeyUnavailableException("Identity key for '$alias' cannot be decrypted", read.cause)
+            is SecureRead.Present -> seedFrom(alias, read)
+        }
+        try {
+            return Ed25519Sign(seed).sign(data)
+        } catch (e: GeneralSecurityException) {
+            throw IdentityKeyUnavailableException("Identity key for '$alias' is invalid", e)
+        } finally {
+            seed.fill(0)
         }
     }
 
-    override fun getIdentityPublicKey(alias: String): String? {
-        return secureStorage.getString("${alias}_pub")
+    override fun deleteIdentityKey(alias: String) {
+        secureStorage.remove(privateKeyName(alias))
+        secureStorage.remove(publicKeyName(alias))
     }
 
-    override fun generateEphemeralKeyPair(): Pair<ByteArray, String> {
-        val privateKeyRaw = X25519.generatePrivateKey()
-        val publicKeyRaw = X25519.publicFromPrivate(privateKeyRaw)
-        val publicKeyBase64 = Base64.encodeToString(publicKeyRaw, Base64.NO_WRAP)
-        return Pair(privateKeyRaw, publicKeyBase64)
+    /** Returns the raw seed. Seeds written before v2 were stored as Base64 text; they are re-stored as raw bytes. */
+    private fun seedFrom(alias: String, read: SecureRead.Present): ByteArray {
+        if (!read.isLegacyFormat) {
+            if (read.value.size != SEED_SIZE) {
+                read.wipe()
+                throw IdentityKeyUnavailableException("Stored identity key has ${read.value.size} bytes")
+            }
+            return read.value
+        }
+        // One-time migration. The legacy value is Base64 text and becomes an immutable String
+        // briefly; afterwards the key only exists as raw bytes.
+        val legacyText = String(read.value, Charsets.US_ASCII).trim()
+        read.wipe()
+        val seed = try {
+            Base64.getDecoder().decode(legacyText)
+        } catch (e: IllegalArgumentException) {
+            throw IdentityKeyUnavailableException("Legacy identity key is not valid Base64", e)
+        }
+        if (seed.size != SEED_SIZE) {
+            seed.fill(0)
+            throw IdentityKeyUnavailableException("Legacy identity key has ${seed.size} bytes")
+        }
+        secureStorage.putBytes(privateKeyName(alias), seed)
+        return seed
     }
 
-    override fun computeSharedSessionKey(localPrivateKey: ByteArray, peerPublicKeyBase64: String): ByteArray {
-        val peerPublicKeyRaw = Base64.decode(peerPublicKeyBase64, Base64.NO_WRAP)
-        val sharedSecret = X25519.computeSharedSecret(localPrivateKey, peerPublicKeyRaw)
+    private fun privateKeyName(alias: String) = "${alias}_prv"
+    private fun publicKeyName(alias: String) = "${alias}_pub"
 
-        // Deriving AES-256 session key using HKDF-SHA256 (Tink subtle helper)
-        return com.google.crypto.tink.subtle.Hkdf.computeHkdf(
-            "HmacSHA256",
-            sharedSecret,
-            ByteArray(0),
-            ByteArray(0),
-            32
-        )
-    }
-
-    override fun computeHmacSha256(key: ByteArray, data: ByteArray): ByteArray {
-        val mac = javax.crypto.Mac.getInstance("HmacSHA256")
-        val secretKeySpec = javax.crypto.spec.SecretKeySpec(key, "HmacSHA256")
-        mac.init(secretKeySpec)
-        return mac.doFinal(data)
+    private companion object {
+        const val SEED_SIZE = 32
     }
 }

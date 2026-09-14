@@ -24,7 +24,9 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 shrinks the release build and strips android.util.Log debug calls (see proguard-rules.pro).
+            // No signing config is committed; sign release builds outside the repository.
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -55,35 +57,35 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-    
+    implementation(libs.kotlinx.coroutines.android)
+
     // Core Modules
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
-    implementation(project(":core:navigation"))
+    implementation(project(":core:protocol"))
     implementation(project(":core:security"))
     implementation(project(":core:identity"))
     implementation(project(":core:trusteddevices"))
     implementation(project(":core:networking"))
-    implementation(project(":core:discovery"))
     implementation(project(":core:pairing"))
-    
+    // Used only by the debug tools (src/debug); R8 removes it from release builds.
+    implementation(project(":core:discovery"))
+
     // Feature Modules
     implementation(project(":feature:pairing"))
-    implementation(project(":feature:settings"))
-    
+
     // Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.navigation.compose)
-    
+
     // Hilt DI
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
-    
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -1,99 +1,87 @@
 package com.ecosystem.core.security
 
-import android.util.Base64
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkStatic
-import io.mockk.slot
-import io.mockk.verify
+import com.google.crypto.tink.subtle.Ed25519Sign
+import com.google.crypto.tink.subtle.Ed25519Verify
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.junit.Before
+import org.junit.Assert.fail
 import org.junit.Test
+import java.util.Base64
 
 class CryptoManagerTest {
 
-    private val secureStorage: SecureStorage = mockk()
-    private lateinit var cryptoManager: CryptoManager
+    private val storage = FakeSecureStorage()
+    private val cryptoManager = CryptoManagerImpl(storage)
+    private val alias = "test_alias"
 
-    @Before
-    fun setUp() {
-        mockkStatic(Base64::class)
-        every { Base64.encodeToString(any(), any()) } answers {
-            java.util.Base64.getEncoder().encodeToString(firstArg<ByteArray>())
-        }
-        every { Base64.decode(any<String>(), any()) } answers {
-            java.util.Base64.getDecoder().decode(firstArg<String>())
-        }
-        every { Base64.decode(any<ByteArray>(), any()) } answers {
-            java.util.Base64.getDecoder().decode(firstArg<ByteArray>())
-        }
-        cryptoManager = CryptoManagerImpl(secureStorage)
+    @Test
+    fun `generated key is stored as a raw 32-byte seed, never as text`() {
+        val publicKey = cryptoManager.generateIdentityKeyPair(alias)
+        assertEquals(32, publicKey.size)
+        val stored = storage.values["${alias}_prv"] as SecureRead.Present
+        assertEquals(32, stored.value.size)
+        assertFalse(stored.isLegacyFormat)
+        val state = cryptoManager.identityKeyState(alias) as IdentityKeyState.Present
+        assertArrayEquals(publicKey, state.publicKey)
     }
 
     @Test
-    fun `generateIdentityKeyPair generates and saves public and private keys`() {
-        // Given
-        val alias = "test_alias"
-        val prvSlot = slot<String>()
-        val pubSlot = slot<String>()
-
-        every { secureStorage.putString(eq("${alias}_prv"), capture(prvSlot)) } returns Unit
-        every { secureStorage.putString(eq("${alias}_pub"), capture(pubSlot)) } returns Unit
-
-        // When
-        val pubKeyBase64 = cryptoManager.generateIdentityKeyPair(alias)
-
-        // Then
-        assertNotNull(pubKeyBase64)
-        assertTrue(prvSlot.isCaptured)
-        assertTrue(pubSlot.isCaptured)
-        assertEquals(pubKeyBase64, pubSlot.captured)
-
-        verify { secureStorage.putString("${alias}_prv", any()) }
-        verify { secureStorage.putString("${alias}_pub", any()) }
+    fun `signatures verify against the returned public key`() {
+        val publicKey = cryptoManager.generateIdentityKeyPair(alias)
+        val data = "transcript".toByteArray()
+        val signature = cryptoManager.sign(alias, data)
+        Ed25519Verify(publicKey).verify(signature, data)
     }
 
     @Test
-    fun `signAndVerify succeeds with generated keys`() {
-        // Given
-        val alias = "test_alias"
-        val data = "Hello Continuity World!".toByteArray()
+    fun `legacy base64 text key is still usable and is migrated to raw bytes`() {
+        val keyPair = Ed25519Sign.KeyPair.newKeyPair()
+        val legacyText = Base64.getEncoder().encodeToString(keyPair.privateKey)
+        storage.values["${alias}_prv"] = SecureRead.Present(legacyText.toByteArray(), isLegacyFormat = true)
 
-        // Generate actual Tink keys for mocking the storage
-        val keyPair = com.google.crypto.tink.subtle.Ed25519Sign.KeyPair.newKeyPair()
-        val privateKeyBase64 = java.util.Base64.getEncoder().encodeToString(keyPair.privateKey)
-        val publicKeyBase64 = java.util.Base64.getEncoder().encodeToString(keyPair.publicKey)
+        val signature = cryptoManager.sign(alias, byteArrayOf(1, 2, 3))
+        Ed25519Verify(keyPair.publicKey).verify(signature, byteArrayOf(1, 2, 3))
 
-        every { secureStorage.getString("${alias}_prv") } returns privateKeyBase64
-
-        // When
-        val signature = cryptoManager.signWithIdentityKey(alias, data)
-        val isVerified = cryptoManager.verifySignature(publicKeyBase64, data, signature)
-
-        // Then
-        assertNotNull(signature)
-        assertTrue(isVerified)
+        val migrated = storage.values["${alias}_prv"] as SecureRead.Present
+        assertFalse(migrated.isLegacyFormat)
+        assertArrayEquals(keyPair.privateKey, migrated.value)
     }
 
     @Test
-    fun `computeSharedSessionKey generates identical keys for both peers`() {
-        // Given
-        val (alicePrivateKey, alicePublicKeyBase64) = cryptoManager.generateEphemeralKeyPair()
-        val (bobPrivateKey, bobPublicKeyBase64) = cryptoManager.generateEphemeralKeyPair()
+    fun `missing key is reported and signing fails explicitly`() {
+        assertEquals(IdentityKeyState.Missing, cryptoManager.identityKeyState(alias))
+        expectUnavailable { cryptoManager.sign(alias, byteArrayOf(1)) }
+    }
 
-        // When
-        val aliceSessionKey = cryptoManager.computeSharedSessionKey(alicePrivateKey, bobPublicKeyBase64)
-        val bobSessionKey = cryptoManager.computeSharedSessionKey(bobPrivateKey, alicePublicKeyBase64)
+    @Test
+    fun `undecryptable key is reported as unreadable and never regenerated`() {
+        storage.values["${alias}_prv"] = SecureRead.Unreadable(KeystoreUnavailableException("key lost"))
+        assertTrue(cryptoManager.identityKeyState(alias) is IdentityKeyState.Unreadable)
+        expectUnavailable { cryptoManager.sign(alias, byteArrayOf(1)) }
+        assertTrue(storage.values["${alias}_prv"] is SecureRead.Unreadable)
+    }
 
-        // Then
-        assertNotNull(aliceSessionKey)
-        assertNotNull(bobSessionKey)
-        assertEquals(32, aliceSessionKey.size)
-        assertEquals(32, bobSessionKey.size)
-        
-        // Assert that Bob and Alice derived the exact same AES session key
-        assertTrue(aliceSessionKey.contentEquals(bobSessionKey))
+    @Test
+    fun `corrupted key length is unreadable`() {
+        storage.values["${alias}_prv"] = SecureRead.Present(ByteArray(31), isLegacyFormat = false)
+        assertTrue(cryptoManager.identityKeyState(alias) is IdentityKeyState.Unreadable)
+    }
+
+    @Test
+    fun `delete removes the key`() {
+        cryptoManager.generateIdentityKeyPair(alias)
+        cryptoManager.deleteIdentityKey(alias)
+        assertEquals(IdentityKeyState.Missing, cryptoManager.identityKeyState(alias))
+        assertTrue(storage.values.isEmpty())
+    }
+
+    private fun expectUnavailable(block: () -> Unit) {
+        try {
+            block()
+            fail("Expected IdentityKeyUnavailableException")
+        } catch (expected: IdentityKeyUnavailableException) {
+        }
     }
 }
